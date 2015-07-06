@@ -4,6 +4,10 @@ set -e
 
 case "$1" in
   configure)
+        if [ ! -L /etc/freeradius/mods-enabled/dhcp ]; then
+            (cd /etc/freeradius/mods-enabled/ && ln -fs ../mods-available/dhcp dhcp)
+        fi
+
         if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
           invoke-rc.d freeradius force-reload
         else
