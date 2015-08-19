@@ -431,6 +431,8 @@ void		rad_suid_set_down_uid(uid_t uid);
 void		rad_suid_down(void);
 void		rad_suid_up(void);
 void		rad_suid_down_permanent(void);
+
+size_t		rad_getsysconf(int name, int default_value);
 /* regex.c */
 
 #ifdef HAVE_REGEX
