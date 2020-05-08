@@ -167,6 +167,38 @@ bool _fr_proc_get_cpu_type(cpu_type_t *cpu_type) {
 
 	return true;
 }
+#elif defined(__linux__)
+bool fr_proc_get_memory_usage(fr_proc_memory_t *proc_memory) {
+	int ret;
+	const char *proc_statm = "/proc/self/statm";
+	FILE *f;
+
+	fr_assert (proc_memory != NULL);
+
+	f = fopen(proc_statm, "r");
+	if (!f) {
+		fr_strerror_printf("Problems with fopen(%s)", proc_statm);
+		return false;
+	}
+
+	/**
+	 * The 7 fields as described in https://github.com/torvalds/linux/blob/master/fs/proc/array.c#L635
+	 */
+	ret = fscanf(f, "%lu %lu %lu %lu 0 %lu 0", &proc_memory->size,
+						   &proc_memory->resident,
+						   &proc_memory->shared,
+						   &proc_memory->text,
+						   &proc_memory->data);
+	if (ret != 5) {
+		fr_strerror_printf("Unexpected content of %s", proc_statm);
+		fclose(f);
+		return false;
+	}
+
+	fclose(f);
+
+	return true;
+}
 #else
 bool fr_proc_get_memory_usage(UNUSED fr_proc_memory_t *proc_memory) {
 	fr_strerror_printf("fr_proc_get_memory_usage not implemented");
