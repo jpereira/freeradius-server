@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/pcap.h>
+#include <freeradius-devel/util/proc.h>
 #include <freeradius-devel/util/timeval.h>
 #include <freeradius-devel/radius/list.h>
 
@@ -1814,6 +1815,18 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	}
 
 	captured++;
+
+	/*
+	 *	Print out the memory usage for '-Z N' packets.
+	 */
+	if ((captured % conf->mem_usage_by_packets) == 0) {
+		fr_proc_memory_t pm;
+
+		if (fr_proc_get_memory_usage(&pm)) {
+			INFO("** Memory statistics: resident=%ld, shared=%ld", pm.resident, pm.shared);
+		}
+	}
+
 	/*
 	 *	We've hit our capture limit, break out of the event loop
 	 */
@@ -2284,7 +2297,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Get options
 	 */
-	while ((c = getopt(argc, argv, "ab:c:C:d:D:e:Ef:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:")) != -1) {
+	while ((c = getopt(argc, argv, "ab:c:C:d:D:e:Ef:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:Z:")) != -1) {
 		switch (c) {
 		case 'a':
 		{
@@ -2472,6 +2485,14 @@ int main(int argc, char *argv[])
 			conf->stats.out = RS_STATS_OUT_COLLECTD;
 			break;
 #endif
+		case 'Z':
+			conf->mem_usage_by_packets = atoi(optarg);
+			if (conf->mem_usage_by_packets < 1 || conf->mem_usage_by_packets > 1024) {
+				ERROR("Print out memory usage packets interval must be [1-1024]");
+				usage(1);
+			}
+			break;
+
 		default:
 			usage(64);
 		}
@@ -2894,6 +2915,10 @@ int main(int argc, char *argv[])
 			ERROR("Failed opening pcap output (%s): %s", out->name, fr_strerror());
 			goto finish;
 		}
+	}
+
+	if (conf->mem_usage_by_packets > 0) {
+		DEBUG("Print out the memory usage for each %d packets", conf->mem_usage_by_packets);
 	}
 
 	/*

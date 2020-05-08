@@ -270,6 +270,8 @@ struct rs {
 	bool			verify_udp_checksum;	//!< Check UDP checksum in packets.
 	bool			verify_radius_authenticator;	//!< Check RADIUS authenticator in packets.
 
+	int			mem_usage_by_packets;	//!< Print memory usage for each N packets.
+
 	char			*radius_secret;		//!< Secret to decode encrypted attributes.
 
 	char			*pcap_filter;		//!< PCAP filter string applied to live capture devices.
