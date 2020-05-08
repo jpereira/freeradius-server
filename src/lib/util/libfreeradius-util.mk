@@ -42,6 +42,7 @@ SOURCES		:= \
 		   pair.c \
 		   pcap.c \
 		   print.c \
+		   proc.c \
 		   proto.c \
 		   rand.c \
 		   rbtree.c \
