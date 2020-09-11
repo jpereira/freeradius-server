@@ -1,0 +1,27 @@
+#  Test vectors for TFTP attributes
+#
+#  Copyright 2020 Network RADIUS SARL <legal@networkradius.com>
+#
+proto tftp
+proto-dictionary tftp
+
+#
+#	Client -> Server (Read-Request) - With invalid block-size. (max is 65464)
+#
+decode-proto 00 01 73 63 61 6c 64 5f 6c 61 77 2e 74 78 74 00 61 73 63 69 69 00 62 6c 6b 73 69 7a 65 00 36 35 34 36 35 00
+match Packet contains malformed attribute
+
+#
+#	Client -> Server (Read-Request) - With invalid mode. (max is 65464)
+#
+decode-proto 00 01 73 63 61 6c 64 5f 6c 61 77 2e 74 78 74 00 01 02 03 04 05 00
+match Packet contains malformed attribute
+
+#
+#	Invalid opcode
+#
+decode-proto 00 66 73 63 61 6c 64 5f 6c 61 77 2e 74 78 74 00 01 02 03 04 05 00
+match Invalid TFTP opcode 0x66
+
+count
+match 8
