@@ -83,6 +83,7 @@ char const *fr_tftp_codes[FR_TFTP_MAX_CODE] = {
 };
 
 int fr_tftp_str2mode(char const *mode);
+char const *fr_tftp_mode2str(int mode);
 
 int fr_tftp_str2mode(char const *mode)
 {
@@ -90,6 +91,15 @@ int fr_tftp_str2mode(char const *mode)
 	if (!strcasecmp(mode, "octet")) return FR_TFTP_MODE_VALUE_OCTET;
 
 	return FR_TFTP_MODE_VALUE_INVALID;
+}
+
+char const *fr_tftp_mode2str(int mode)
+{
+	switch(mode) {
+	case FR_TFTP_MODE_VALUE_ASCII: return "ascii";
+	case FR_TFTP_MODE_VALUE_OCTET: return "octet";
+	default: return NULL;
+	}
 }
 
 int fr_tftp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_PAIR **vps)
@@ -133,7 +143,7 @@ int fr_tftp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_
 		*  ------------------------------------------------
 		*  Figure 5-1: RRQ/WRQ packet
 		*/
-		
+
 		/* <filename> */
 		q = memchr(p, '\0', (end - p));
 		if (!q || q[0] != '\0') {
@@ -242,6 +252,166 @@ int fr_tftp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_
 
 done:
 	return data_len;
+}
+
+ssize_t fr_tftp_encode(uint8_t *buffer, size_t buflen, UNUSED uint8_t const *original, VALUE_PAIR *vps)
+{
+	VALUE_PAIR *vp;
+	uint16_t opcode;
+	uint8_t *p, *end;
+	char const *buf;
+	size_t len;
+
+	fr_assert(buffer != NULL);
+	fr_assert(buflen > 0);
+	fr_assert(vps != NULL);
+
+	if (buflen < FR_TFTP_HDR_LEN) {
+		fr_strerror_printf("Output buffer is too small for TFTP packet. (%zu < %d)", buflen, FR_TFTP_HDR_LEN);
+		return -1;
+	}
+
+	vp = fr_pair_find_by_da(vps, attr_tftp_opcode, TAG_ANY);
+	if (!vp) {
+		fr_strerror_printf("Cannot send TFTP packet without %s", attr_tftp_opcode->name);
+		return -1;
+	}
+
+	p = buffer;
+	end = (buffer + buflen);
+
+	/* <Opcode> */
+	opcode = htons(vp->vp_uint16);
+	memcpy(p, &opcode, 2);
+	p += 2;
+	opcode = vp->vp_uint16;
+
+	switch (opcode) {
+	case FR_TFTP_OPCODE_VALUE_READ_REQUEST:
+	case FR_TFTP_OPCODE_VALUE_WRITE_REQUEST:
+		/*
+		* 2 bytes     string    1 byte     string   1 byte
+		* ------------------------------------------------
+		* | Opcode |  Filename  |   0  |    Mode    |   0  |
+		* ------------------------------------------------
+		* Figure 5-1: RRQ/WRQ packet
+		*/
+
+		/* <Filename> */
+		vp = fr_pair_find_by_da(vps, attr_tftp_filename, TAG_ANY);
+		if (!vp) {
+			fr_strerror_printf("Invalid TFTP packet without %s", attr_tftp_filename->name);
+			return -1;
+		}
+
+		memcpy(p, vp->vp_strvalue, vp->vp_length);
+		p += vp->vp_length;
+		*p++ = '\0';
+
+		/* <mode> */
+		vp = fr_pair_find_by_da(vps, attr_tftp_mode, TAG_ANY);
+		if (!vp) {
+			fr_strerror_printf("Invalid TFTP packet without %s", attr_tftp_mode->name);
+			return -1;
+		}
+
+		buf = fr_tftp_mode2str(vp->vp_uint16);
+		if (!buf) {
+			fr_strerror_printf("Invalid %s value", attr_tftp_mode->name);
+			return -1;
+		}
+		len = strlen(buf);
+		memcpy(p, buf, len);
+		p += len;
+		*p++ = '\0';
+
+		break;
+
+	case FR_TFTP_OPCODE_VALUE_ACKNOWLEDGEMENT:
+	case FR_TFTP_OPCODE_VALUE_DATA:
+		/**
+		 * 2 bytes     2 bytes
+		 * ---------------------
+		 * | Opcode |   Block #  |
+		 * ---------------------
+		 * Figure 5-3: ACK packet
+		 */
+
+		/* <Block> */
+		vp = fr_pair_find_by_da(vps, attr_tftp_block, TAG_ANY);
+		if (!vp) {
+			fr_strerror_printf("Invalid TFTP packet without %s", attr_tftp_block->name);
+			return -1;
+		}
+
+		len = htons(vp->vp_uint16);
+		memcpy(p, &len, 2);
+		p += 2;
+
+		/*
+		 *	From that point...
+		 *
+		 *  2 bytes     2 bytes      n bytes
+		 *  ----------------------------------
+		 *  | Opcode |   Block #  |   Data     |
+		 *  ----------------------------------
+		 *  Figure 5-2: DATA packet
+		 */
+		if (opcode != FR_TFTP_OPCODE_VALUE_DATA) goto done;
+
+		/* <Data> */
+		vp = fr_pair_find_by_da(vps, attr_tftp_data, TAG_ANY);
+		if (!vp) {
+			fr_strerror_printf("Invalid TFTP packet without %s", attr_tftp_data->name);
+			return -1;
+		}
+
+		memcpy(p, vp->vp_octets, vp->vp_length);
+		p += vp->vp_length;
+
+		break;
+
+	case FR_TFTP_OPCODE_VALUE_ERROR:
+		/**
+		 * 2 bytes     2 bytes      string    1 byte
+		 * -----------------------------------------
+		 * | Opcode |  ErrorCode |   ErrMsg   |   0  |
+		 * -----------------------------------------
+		 *
+		 * Figure 5-4: ERROR packet
+		 */
+
+		/* <ErroCode> */
+		vp = fr_pair_find_by_da(vps, attr_tftp_error_code, TAG_ANY);
+		if (!vp) {
+			fr_strerror_printf("Invalid TFTP packet without %s", attr_tftp_error_code->name);
+			return -1;
+		}
+
+		len = htons(vp->vp_uint16);
+		memcpy(p, &len, 2);
+		p += 2;
+
+		/* <ErrMsg> */
+		vp = fr_pair_find_by_da(vps, attr_tftp_error_message, TAG_ANY);
+		if (!vp) {
+			fr_strerror_printf("Invalid TFTP packet without %s", attr_tftp_error_message->name);
+			return -1;
+		}
+
+		memcpy(p, vp->vp_strvalue, vp->vp_length);
+		p += vp->vp_length;
+		*p++ = '\0';
+
+		break;
+
+	default:
+		fr_strerror_printf("Invalid TFTP opcode %#04x", opcode);
+		return -1;
+	}
+
+done:
+	return (p - buffer);
 }
 
 /**
