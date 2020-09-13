@@ -79,8 +79,10 @@ extern "C" {
 
 /* tftp.c */
 extern char const	*fr_tftp_codes[FR_TFTP_MAX_CODE];
+extern char const 	*fr_tftp_error_codes[FR_TFTP_MAX_ERROR_CODE];
 
 int fr_tftp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, VALUE_PAIR **vps) CC_HINT(nonnull(2,4));
+ssize_t fr_tftp_encode(uint8_t *buffer, size_t buflen, uint8_t const *original, VALUE_PAIR *vps) CC_HINT(nonnull(1,4));
 
 /* base.c */
 int fr_tftp_init(void);
