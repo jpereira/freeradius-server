@@ -29,6 +29,9 @@
 
 #define us(x) (uint8_t) x
 
+extern char const fr_base64_sextet[];
+extern char const fr_base64_str[];
+
 fr_table_num_sorted_t const fr_aka_sim_id_request_table[] = {
 	{ L("Any-Id-Req"),		AKA_SIM_ANY_ID_REQ		},
 	{ L("FullAuth-Id-Req"),	AKA_SIM_FULLAUTH_ID_REQ		},
