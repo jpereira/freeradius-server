@@ -283,6 +283,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	rlm_sql_row_t row;
 	unsigned int i = 0;
 	RADCLIENT *c;
+	char client_id[64];
 
 	DEBUG("rlm_sql (%s): Processing generate_sql_clients",
 	      inst->name);
@@ -298,6 +299,8 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	while ((rlm_sql_fetch_row(inst, NULL, &handle) == RLM_SQL_OK) && (row = handle->row)) {
 		int num_rows;
 		char *server = NULL;
+		CONF_SECTION *client;
+		CONF_PAIR *cp;
 
 		i++;
 
@@ -342,17 +345,34 @@ static int generate_sql_clients(rlm_sql_t *inst)
 		      inst->name,
 		      row[1], row[2], server ? server : "global");
 
-		/* FIXME: We should really pass a proper ctx */
-		c = client_afrom_query(NULL,
-				      row[1],	/* identifier */
-				      row[4],	/* secret */
-				      row[2],	/* shortname */
-				      row[3],	/* type */
-				      server,	/* server */
-				      false);	/* require message authenticator */
+		/* allocate conf section */
+		snprintf(client_id, sizeof(client_id), "sql_client%d", i);
+		client = cf_section_alloc(NULL, "client", client_id);
+		if (!client) return -1;
+
+#define CLIENT_PAIR_ADD(k,v) \
+		cp = cf_pair_alloc(client, k, v, T_OP_SET, T_BARE_WORD, T_BARE_WORD); \
+		cf_pair_add(client, cp);
+
+		/* Build 'client $name {}' section */
+		CLIENT_PAIR_ADD("ipaddr", row[1]);		/* identifier */
+		CLIENT_PAIR_ADD("shortname", row[2]);		/* shortname */
+		CLIENT_PAIR_ADD("nas_type", row[3]);		/* type */
+		CLIENT_PAIR_ADD("secret", row[4]);		/* secret */
+		CLIENT_PAIR_ADD("virtual_server", server);	/* server */
+
+		c = client_afrom_cs(NULL, client, false, false);
 		if (!c) {
+			ERROR("rlm_sql: Failed to add client, possible duplicate?");
+			/* free config setion */
+			talloc_free(client);
 			continue;
 		}
+
+		/*
+		 * Client parents the CONF_SECTION which defined it.
+		 */
+		talloc_steal(c, client);
 
 		if (!client_add(NULL, c)) {
 			WARN("Failed to add client, possible duplicate?");
