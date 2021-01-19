@@ -7,3 +7,5 @@ endif
 SOURCES		:= $(TARGETNAME).c
 
 TGT_LDLIBS	:= $(OPENSSL_LIBS)
+
+TGT_PREREQS	:= libfreeradius-sim.a
