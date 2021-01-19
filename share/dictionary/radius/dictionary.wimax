@@ -555,4 +555,59 @@ ATTRIBUTE	Visited-HNP-PMIP6			136	ipv6prefix
 ATTRIBUTE	Visited-Interface-Id-PMIP6		137	ifid
 ATTRIBUTE	Visited-IPv4-HoA-PMIP6-2		138	ipaddr
 
+ATTRIBUTE	AE-Command-Code				143	byte
+
+VALUE	AE-Command-Code	Authentication-Information-Request	1
+VALUE	AE-Command-Code	Authentication-Information-Answer	2
+VALUE	AE-Command-Code	Update-Location-Request		3
+VALUE	AE-Command-Code	Update-Location-Answer		4
+VALUE	AE-Command-Code	Cancel-Location-Request		5
+VALUE	AE-Command-Code	Cancel-Location-Answer		6
+VALUE	AE-Command-Code	Purge-UE-Request		7
+VALUE	AE-Command-Code	Purge-UE-Answer			8
+VALUE	AE-Command-Code	Insert-Subscriber-Data-Request	9
+VALUE	AE-Command-Code	Insert-Subscriber-Data-Answer	10
+VALUE	AE-Command-Code	Delete-Subscriber-Data-Request	11
+VALUE	AE-Command-Code	Delete-Subscriber-Data-Answer	12
+VALUE	AE-Command-Code	Notification-Request		13
+VALUE	AE-Command-Code	Notification-Answer		14
+VALUE	AE-Command-Code	Accounting			15
+
+ATTRIBUTE	Requested-EUTRAN-Authentication-Info	144	tlv
+ATTRIBUTE	Number-Of-Requested-Vectors	.1	integer
+ATTRIBUTE	Immediate-Response-Preferred	.2	integer
+VALUE		Immediate-Response-Preferred	Yes		0
+ATTRIBUTE	Re-synchronization-Info		.3	octets
+
+ATTRIBUTE	Authentication-Info		145	tlv
+ATTRIBUTE	E-UTRAN-Vector			.1	tlv
+ATTRIBUTE	Item-Number			.1.1	integer
+ATTRIBUTE	RAND				.1.2	octets
+ATTRIBUTE	XRES				.1.3	octets
+ATTRIBUTE	AUTN				.1.4	octets
+ATTRIBUTE	KASME				.1.5	octets
+
+ATTRIBUTE	Visited-PLMN-ID			146	octets
+
+ATTRIBUTE	RAT-Type			150	integer
+
+ATTRIBUTE	Cancellation-Type		155	byte
+
+VALUE	Cancellation-Type	MME_UPDATE_PROCEDURE		0
+VALUE	Cancellation-Type	SUBSCRIPTION_WITHDRAWAL		2
+VALUE	Cancellation-Type	INITIAL_ATTACH_PROCEDURE	4
+
+ATTRIBUTE	EPS-Location-Information	156	tlv
+ATTRIBUTE	E-UTRAN-Cell-Global-Identity	.1	octets
+ATTRIBUTE	Tracking-Area-Identity		.2	octets
+ATTRIBUTE	Geographical-Information	.3	octets
+ATTRIBUTE	Geodetic-Information		.4	octets
+ATTRIBUTE	Current-Location-Retrieved	.5	byte
+
+VALUE	Current-Location-Retrieved	Active-Location-Retrieval	0
+
+ATTRIBUTE	Age-Of-Location-Information	.6	integer
+
+ATTRIBUTE	Service-Selection		166	string
+
 END-VENDOR	WiMAX
