@@ -466,6 +466,7 @@ ATTRIBUTE	Log-Type				1896	integer
 #	these attributes.
 #
 ATTRIBUTE	WiMAX-MN-NAI				1900	string
+ATTRIBUTE	WiMAX-SIM-RAND				1901	octets[2]
 
 ATTRIBUTE	TLS-Cert-Serial				1910	string
 ATTRIBUTE	TLS-Cert-Expiration			1911	date
