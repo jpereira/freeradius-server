@@ -61,17 +61,17 @@
 #
 #    MN-HA-CMIP4 = H(MIP-RK, "CMIP4 MN HA" | HA-IPv4 | MN-NAI)
 #
-#  Where `HA-IPv4` is `WiMAX-hHA-IP-MIP4` or maybe `WiMAX-vHA-IP-MIP4`
+#  Where `HA-IPv4` is `WiMAX.hHA-IP-MIP4` or maybe `WiMAX.vHA-IP-MIP4`
 #
-#  * Which goes into `WiMAX-MN-hHA-MIP4-Key`
-#  * or maybe `WiMAX-RRQ-MN-HA-Key`
-#  * or maybe even `WiMAX-vHA-MIP4-Key`
+#  * Which goes into `WiMAX.MN-hHA-MIP4-Key`
+#  * or maybe `WiMAX.RRQ-MN-HA-Key`
+#  * or maybe even `WiMAX.vHA-MIP4-Key`
 #
 #  The corresponding `SPI` is `SPI-CMIP4`, which is `MIP-SPI`,
 #
-#  * Which goes into `WiMAX-MN-hHA-MIP4-SPI`
-#  * or maybe `WiMAX-RRQ-MN-HA-SPI`
-#  * or even `WiMAX-MN-vHA-MIP4-SPI`
+#  * Which goes into `WiMAX.MN-hHA-MIP4-SPI`
+#  * or maybe `WiMAX.RRQ-MN-HA-SPI`
+#  * or even `WiMAX.MN-vHA-MIP4-SPI`
 #
 #    MN-HA-PMIP4 = H(MIP-RK, "PMIP4 MN HA" | HA-IPv4 | MN-NAI)
 #    MN-HA-CMIP6 = H(MIP-RK, "CMIP6 MN HA" | HA-IPv6 | MN-NAI)
@@ -79,7 +79,7 @@
 #  Both with similar comments to above for `MN-HA-CMIP4`.
 #
 #  In order to tell which one to use (`CMIP4`, `PMIP4`, or `CMIP6`), you have to
-#  set `WiMAX-IP-Technology` in the reply to one of the appropriate values.
+#  set `WiMAX.IP-Technology` in the reply to one of the appropriate values.
 #
 #    FA-RK = H(MIP-RK, "FA-RK")
 #    MN-FA = H(FA-RK, "MN FA" | FA-IP | MN-NAI)
@@ -101,6 +101,53 @@
 #  `DHCP-RK` = 160-bit random number assigned by the AAA server to a specific DHCP server.
 #  `vDHCP-RK` is the same thing.
 #
+#	## Instructions for v2.1 (LTE) WiMAX:
+#
+#	When called from the "authorize" this module will detect the
+#	presence of the following attributes:
+#
+#		request:WiMAX.Requested-EUTRAN-Authentication-Info.Re-synchronization-Info
+#		control:SIM-Ki
+#		control:SIM-OPc
+#
+#	If all attributes are present, (i.e. a known SIM is requesting a
+#	resync) then the module will attempt to extract the new SQN and
+#	save it in control:SIM-SQN. It will also save a copy of
+#	RAND from the request in control:WiMAX-SIM-RAND.
+#
+#	The resulting value of SQN can then be saved in a database
+#	e.g. via a call to the sql module using some unlang
+#
+#	When called in the "post_auth" section it looks for:
+#
+#		control:SIM-Ki
+#		control:SIM-OPc
+#		control:SIM-AMF
+#		control:SIM-SQN
+#		request:WiMAX.Visited-PLMN-ID
+#
+#	If all these are present then it will attempt to generate the
+#	keys for EPS AKA.
+#
+#	First it checks for the presence of control:WiMAX-SIM-RAND and
+#	if it is not present it generates a new RAND value which is
+#	stored in reply:WiMAX.E-UTRAN-Vector-RAND. If it is present then
+#	the value is simply copied to the reply attribute.
+#
+#	Then it calls the Milenage algorithm to generate:
+#
+#		reply:WiMAX.Authentication-Info.E-UTRAN-Vector.XRES
+#		reply:WiMAX.Authentication-Info.E-UTRAN-Vector.AUTN
+#
+#	And finally generates KASME which is stored in:
+#		reply:WiMAX.Authentication-Info.E-UTRAN-Vector.KASME
+#
+#
+#	NOTE: It is up to the system administrator to make sure that all
+#	the necessary "control" attributes are populated with the
+#	required values. The IMSI is likely to be found in User-Name in
+#	the request and this can be used as the key to grab the values
+#	from a database.
 
 #
 #  ## Configuration Settings
