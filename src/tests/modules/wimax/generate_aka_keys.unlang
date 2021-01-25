@@ -1,0 +1,43 @@
+# set private keys
+update control {
+	&SIM-Ki := 0xEB215756028D60E3275E613320AEC880
+	&SIM-OPc := 0xFB2A3D1B360F599ABAB99DB8669F8308
+	&SIM-AMF := 0x00000000000000000000000000000001
+	&SIM-SQN := 2
+
+	&WiMAX-SIM-RAND := 0x39fa2f4e3d523d8619a73b4f65c3e14d
+}
+
+#
+# Call rlm_wimax and process the WiMAX keys.
+#
+wimax.post-auth
+if (!updated) {
+	test_fail
+} else {
+	test_pass
+}
+
+#
+#  Verify if the private keys are valid
+#
+if (&Vendor-Specific.WiMAX.Authentication-Info.E-UTRAN-Vector.KASME != 0x3c240181a6359924ba2942c7a41724f2f360d4801c157bddf547b446302576f6) {
+	test_fail
+}
+
+if (&Vendor-Specific.WiMAX.Authentication-Info.E-UTRAN-Vector.AUTN != 0xa960899c24bb0000364dcb3f29ceedbe) {
+	test_fail
+}
+
+if (&Vendor-Specific.WiMAX.Authentication-Info.E-UTRAN-Vector.RAND != 0x3242e22c470e0f02) {
+	test_fail
+}
+
+# clean up reply[*]
+update reply {
+	&Vendor-Specific.WiMAX.Authentication-Info.E-UTRAN-Vector.KASME !* ANY
+	&Vendor-Specific.WiMAX.Authentication-Info.E-UTRAN-Vector.AUTN !* ANY
+	&Vendor-Specific.WiMAX.Authentication-Info.E-UTRAN-Vector.RAND !* ANY
+}
+
+test_pass

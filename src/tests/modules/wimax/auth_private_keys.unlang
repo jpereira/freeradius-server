@@ -1,0 +1,16 @@
+# set private keys
+update control {
+	&SIM-Ki := 0xEB215756028D60E3275E613320AEC880
+	&SIM-OPc := 0xFB2A3D1B360F599ABAB99DB8669F8308
+	&WiMAX-SIM-RAND := 0x23553cbe9637a89d218ae64dae47bf35
+}
+
+#
+# Call rlm_wimax and process the WiMAX keys.
+#
+wimax.authorize
+if (!updated) {
+	test_fail
+} else {
+	test_pass
+}
