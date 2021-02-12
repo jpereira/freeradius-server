@@ -29,6 +29,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/exfile.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/util/debug.h>
@@ -38,7 +39,7 @@ RCSID("$Id$")
 
 static CONF_PARSER module_config[] = {
 	REDIS_COMMON_CONFIG,
-	CONF_PARSER_TERMINATOR
+	CONF_PARSER_TERMINATOR,
 };
 
 /** rlm_redis module instance
@@ -51,7 +52,40 @@ typedef struct {
 	char const		*name;		//!< Instance name.
 
 	fr_redis_cluster_t	*cluster;	//!< Redis cluster.
+
+	exfile_t		*ef;		//!< Logfile ex instance.
 } rlm_redis_t;
+
+/*
+ *	Log the query to a file.
+ */
+static void rlm_redis_query_log(const rlm_redis_t *inst, request_t *request, char const *query)
+{
+	int 	fd;
+	size_t	len;
+	bool	failed = false;	/* Write the log message outside of the critical region */
+
+	if (!inst->conf.logfile || !*inst->conf.logfile) return;
+
+	fd = exfile_open(inst->ef, request, inst->conf.logfile, 0640);
+	if (fd < 0) {
+		ERROR("rlm_redis (%s): Couldn't open logfile '%s': %s", inst->name,
+			inst->conf.logfile, fr_syserror(errno));
+		return;
+	}
+
+	len = strlen(query);
+	if ((write(fd, query, len) < 0) || (write(fd, "\n", 1) < 0)) {
+		failed = true;
+	}
+
+	if (failed) {
+		ERROR("rlm_redis (%s): Failed writing to logfile '%s': %s", inst->name,
+			inst->conf.logfile, fr_syserror(errno));
+	}
+
+	exfile_close(inst->ef, request, fd);
+}
 
 /** Change the state of a connection to READONLY execute a command and switch to READWRITE
  *
@@ -295,6 +329,8 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	char const		*argv[MAX_REDIS_ARGS];
 	char			argv_buf[MAX_REDIS_COMMAND_LEN];
 
+	rlm_redis_query_log(inst, request, fmt);
+
 	if (p[0] == '-') {
 		p++;
 		read_only = true;
@@ -429,6 +465,7 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			for (int i = 1; i < argc; i++) RDEBUG2("[%i] %s", i, argv[i]);
 			REXDENT();
 		}
+
 		if (!read_only) {
 			reply = redisCommandArgv(conn->handle, argc, argv, NULL);
 			status = fr_redis_command_status(conn, reply);
@@ -507,6 +544,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	inst->cluster = fr_redis_cluster_alloc(inst, conf, &inst->conf, true, NULL, NULL, NULL);
 	if (!inst->cluster) return -1;
+
+	inst->ef = exfile_init(inst, 256, 30, true);
+	if (!inst->ef) {
+		ERROR("Failed creating log file context");
+		return -1;
+	}
 
 	return 0;
 }

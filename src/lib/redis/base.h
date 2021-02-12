@@ -120,6 +120,7 @@ typedef struct {
 	fr_time_delta_t		reconnection_delay;
 
 	char const		*log_prefix;
+	char const		*logfile;	//!< Write REDIS queries to a logfile.
 } fr_redis_conf_t;
 
 #define REDIS_COMMON_CONFIG \
@@ -129,7 +130,9 @@ typedef struct {
 	{ FR_CONF_OFFSET("password", FR_TYPE_STRING | FR_TYPE_SECRET, fr_redis_conf_t, password) }, \
 	{ FR_CONF_OFFSET("max_nodes", FR_TYPE_UINT8, fr_redis_conf_t, max_nodes), .dflt = "20" }, \
 	{ FR_CONF_OFFSET("max_alt", FR_TYPE_UINT32, fr_redis_conf_t, max_alt), .dflt = "3" }, \
-	{ FR_CONF_OFFSET("max_redirects", FR_TYPE_UINT32, fr_redis_conf_t, max_redirects), .dflt = "2" }
+	{ FR_CONF_OFFSET("max_redirects", FR_TYPE_UINT32, fr_redis_conf_t, max_redirects), .dflt = "2" }, \
+	{ FR_CONF_OFFSET("logfile", FR_TYPE_STRING | FR_TYPE_XLAT, fr_redis_conf_t, logfile), .dflt = NULL }
+
 
 void		fr_redis_version_print(void);
 

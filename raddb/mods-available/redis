@@ -58,6 +58,12 @@ redis {
 #	password = thisisreallysecretandhardtoguess
 
 	#
+	#  logfile:: Write REDIS queries to a logfile.
+	#  This is potentially useful for tracing issues with authorization queries.
+	#
+#	logfile = ${logdir}/redis.log
+
+	#
 	#  pool { ... }::
 	#
 	#  Information for the connection pool.  The configuration items below
