@@ -20,9 +20,11 @@
 #include <stddef.h>
 #include <string.h>
 
+#include <openssl/evp.h>
+#include <openssl/hmac.h>
+
 #include <freeradius-devel/tls/log.h>
 #include <freeradius-devel/util/proto.h>
-#include <openssl/evp.h>
 #include "common.h"
 #include "milenage.h"
 
@@ -468,6 +470,149 @@ int milenage_check(uint8_t ik[MILENAGE_IK_SIZE],
 		fr_strerror_const("MAC mismatch");
 		return -1;
 	}
+
+	return 0;
+}
+
+int milenage_mip_generate(uint8_t mip_key[EVP_MAX_MD_SIZE],
+			   size_t *mip_len,
+			   uint32_t *mip_spi,
+			   uint8_t fa_rk_key[EVP_MAX_MD_SIZE],
+			   size_t *fa_rk_len,
+			   uint32_t *fa_rk_spi,
+			   const uint8_t emsk[EMSK_SIZE],
+			   const char *mn_nai,
+			   const size_t mn_nai_len,
+			   const fr_milenage_mip_ip_type_t ip_type,
+			   const fr_ipaddr_t *ha_ipaddr)
+{
+	HMAC_CTX *hmac;
+	uint8_t mip_rk_1[EVP_MAX_MD_SIZE], mip_rk_2[EVP_MAX_MD_SIZE];
+	uint8_t mip_rk[2 * EVP_MAX_MD_SIZE];
+	uint8_t usage_data[24];
+	uint32_t rk1_len, rk2_len, rk_len;
+	uint32_t our_mip_spi;
+
+	/*
+	 *	Initialize usage data.
+	 */
+	memcpy(usage_data, "miprk@wimaxforum.org", 21);	/* with trailing \0 */
+	usage_data[21] = 0x02;
+	usage_data[22] = 0x00;
+	usage_data[23] = 0x01;
+
+	/*
+	 *	MIP-RK-1 = HMAC-SSHA256(EMSK, usage-data | 0x01)
+	 */
+	hmac = HMAC_CTX_new();
+	HMAC_Init_ex(hmac, emsk, EMSK_SIZE, EVP_sha256(), NULL);
+	HMAC_Update(hmac, &usage_data[0], sizeof(usage_data));
+	HMAC_Final(hmac, &mip_rk_1[0], &rk1_len);
+
+	FR_PROTO_HEX_DUMP(mip_rk_1, rk1_len, "MIP-RK-1");
+
+	/*
+	 *	MIP-RK-2 = HMAC-SSHA256(EMSK, MIP-RK-1 | usage-data | 0x01)
+	 */
+	HMAC_Init_ex(hmac, emsk, EMSK_SIZE, EVP_sha256(), NULL);
+	HMAC_Update(hmac, (uint8_t const *)&mip_rk_1, rk1_len);
+	HMAC_Update(hmac, &usage_data[0], sizeof(usage_data));
+	HMAC_Final(hmac, &mip_rk_2[0], &rk2_len);
+
+	FR_PROTO_HEX_DUMP(mip_rk_2, rk2_len, "MIP-RK-2");
+
+	/* Copy out */
+	memcpy(mip_rk, mip_rk_1, rk1_len);
+	memcpy(mip_rk + rk1_len, mip_rk_2, rk2_len);
+	rk_len = (rk1_len + rk2_len);
+
+	/*
+	 *	MIP-SPI = HMAC-SSHA256(MIP-RK, "SPI CMIP PMIP");
+	 */
+	HMAC_Init_ex(hmac, mip_rk, rk_len, EVP_sha256(), NULL);
+	HMAC_Update(hmac, (uint8_t const *) "SPI CMIP PMIP", 12);
+	HMAC_Final(hmac, &mip_rk_1[0], &rk1_len);
+
+	FR_PROTO_HEX_DUMP(mip_rk_1, rk1_len, "MIP-SPI");
+
+	/*
+	 *	Take the 4 most significant octets.
+	 *	If less than 256, add 256.
+	 */
+	our_mip_spi = ((mip_rk_1[0] << 24) | (mip_rk_1[1] << 16) | (mip_rk_1[2] << 8) | mip_rk_1[3]);
+	if (our_mip_spi < 256) our_mip_spi += 256;
+
+	/*
+	 *	Generate and save the MIP key and len
+	 */
+	HMAC_Init_ex(hmac, mip_rk, rk_len, EVP_sha1(), NULL);
+
+	switch(ip_type) {
+	case MILENAGE_MIP_IP_TYPE_PMIP4:
+		/*
+		 *	MN-HA-PMIP4 = H(MIP-RK, "PMIP4 MN HA" | HA-IPv4 | MN-NAI);
+		 */
+		HMAC_Update(hmac, (uint8_t const *) "PMIP4 MN HA", 11);
+		HMAC_Update(hmac, (uint8_t const *) &ha_ipaddr->addr.v4, 4);
+		*mip_spi = (our_mip_spi + 1);
+		break;
+
+	case MILENAGE_MIP_IP_TYPE_CMIP4:
+		/*
+		 *	MN-HA-CMIP4 = H(MIP-RK, "CMIP4 MN HA" | HA-IPv4 | MN-NAI);
+		 */
+		HMAC_Update(hmac, (uint8_t const *) "CMIP4 MN HA", 11);
+		HMAC_Update(hmac, (uint8_t const *) &ha_ipaddr->addr.v4, 4);
+		*mip_spi = our_mip_spi;
+		break;
+
+	case MILENAGE_MIP_IP_TYPE_CMIP6:
+		/*
+		 *	MN-HA-CMIP6 = H(MIP-RK, "CMIP6 MN HA" | HA-IPv6 | MN-NAI);
+		 */
+		HMAC_Update(hmac, (uint8_t const *) "CMIP6 MN HA", 11);
+		HMAC_Update(hmac, (uint8_t const *) &ha_ipaddr->addr.v6, 16);
+		*mip_spi = (our_mip_spi + 2);
+		break;
+
+	default:
+		fr_strerror_printf("Can't generate the MIP keys due to wrong 'ip_type': %d", ip_type);
+		HMAC_CTX_free(hmac);
+		return -1;
+	}
+
+	HMAC_Update(hmac, (uint8_t const *) &mn_nai, mn_nai_len);
+	HMAC_Final(hmac, &mip_rk_1[0], &rk1_len);
+
+	FR_PROTO_HEX_DUMP(mip_rk_1, rk1_len, "MN-HA-(PMIP4|CMIP4|CMIP6)");
+
+	memcpy(mip_key, &mip_rk_1[0], rk1_len);
+	*mip_len = rk1_len;
+
+	/*
+	 *	Generate FA-RK, if requested.
+	 *
+	 *	FA-RK = H(MIP-RK, "FA-RK")
+	 */
+	HMAC_Init_ex(hmac, mip_rk, rk_len, EVP_sha1(), NULL);
+	HMAC_Update(hmac, (uint8_t const *) "FA-RK", 5);
+	HMAC_Final(hmac, &mip_rk_1[0], &rk1_len);
+
+	FR_PROTO_HEX_DUMP(mip_rk_1, rk1_len, "FA-RK");
+
+	memcpy(fa_rk_key, &mip_rk_1[0], rk1_len);
+	*fa_rk_len = rk1_len;
+
+	/*
+	 *	Create FA-RK-SPI, which is really SPI-CMIP4, which is
+	 *	really MIP-SPI.  Clear?  Of course.  This is WiMAX.
+	 */
+	*fa_rk_spi = our_mip_spi;
+
+	/*
+	 *	Wipe the context of all sensitive information.
+	 */
+	HMAC_CTX_free(hmac);
 
 	return 0;
 }

@@ -20,6 +20,9 @@
  */
 #include <stddef.h>
 
+#include <freeradius-devel/util/base.h>
+#include <openssl/evp.h>
+
 /*
  *	Inputs
  */
@@ -29,6 +32,17 @@
 #define MILENAGE_AMF_SIZE	2		//!< Authentication management field.
 #define MILENAGE_SQN_SIZE	6		//!< Sequence number.
 #define MILENAGE_RAND_SIZE	16		//!< Random challenge.
+
+/** The type of MIP IP Technology
+ */
+typedef enum {
+	MILENAGE_MIP_IP_TYPE_NONE  = 0, //!< None
+	MILENAGE_MIP_IP_TYPE_PMIP4 = 2, //!< Proxy Mobile IPv4 (PMIP4)
+	MILENAGE_MIP_IP_TYPE_CMIP4 = 3, //!< Client Mobile IPv4 (CMIP4)
+	MILENAGE_MIP_IP_TYPE_CMIP6 = 6  //!< Client Mobile IPv6 (CMIP6)
+} fr_milenage_mip_ip_type_t;
+
+#define EMSK_SIZE 64
 
 /*
  *	UMTS Outputs
@@ -45,6 +59,18 @@
  */
 #define MILENAGE_SRES_SIZE	4
 #define MILENAGE_KC_SIZE	8
+
+int milenage_mip_generate(uint8_t mip_key[EVP_MAX_MD_SIZE],
+			   size_t *mip_len,
+			   uint32_t *mip_spi,
+			   uint8_t fa_rk_key[EVP_MAX_MD_SIZE],
+			   size_t *fa_rk_len,
+			   uint32_t *fa_rk_spi,
+			   const uint8_t emsk[EMSK_SIZE],
+			   const char *mn_nai,
+			   const size_t mn_nai_len,
+			   const fr_milenage_mip_ip_type_t ip_type,
+			   const fr_ipaddr_t *ha_ipaddr) CC_HINT(nonnull);
 
 int	milenage_opc_generate(uint8_t opc[MILENAGE_OPC_SIZE],
 			      uint8_t const op[MILENAGE_OP_SIZE],
