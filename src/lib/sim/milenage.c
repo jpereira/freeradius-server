@@ -20,13 +20,15 @@
 #include <stddef.h>
 #include <string.h>
 
-#include <openssl/evp.h>
-#include <openssl/hmac.h>
-
 #include <freeradius-devel/tls/log.h>
 #include <freeradius-devel/util/proto.h>
 #include "common.h"
 #include "milenage.h"
+
+USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
+
+#include <openssl/evp.h>
+#include <openssl/hmac.h>
 
 #define MILENAGE_MAC_A_SIZE	8
 #define MILENAGE_MAC_S_SIZE	8
