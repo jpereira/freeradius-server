@@ -32,6 +32,7 @@
 #define MILENAGE_AMF_SIZE	2		//!< Authentication management field.
 #define MILENAGE_SQN_SIZE	6		//!< Sequence number.
 #define MILENAGE_RAND_SIZE	16		//!< Random challenge.
+#define MILENAGE_XRES_SIZE 	8		//!< Expected response.
 
 /** The type of MIP IP Technology
  */
@@ -49,10 +50,13 @@ typedef enum {
  */
 #define MILENAGE_AK_SIZE	6		//!< Anonymisation key.
 #define MILENAGE_AUTN_SIZE	16		//!< Network authentication key.
-#define MILENAGE_IK_SIZE	16		//!< Integrity key.
-#define	MILENAGE_CK_SIZE	16		//!< Ciphering key.
-#define MILENAGE_RES_SIZE	8
 #define MILENAGE_AUTS_SIZE	14
+#define MILENAGE_IK_SIZE	16		//!< Integrity key.
+#define MILENAGE_CK_SIZE	16		//!< Ciphering key.
+#define MILENAGE_RES_SIZE	8
+#define MILENAGE_KK_SIZE	32
+#define MILENAGE_KS_SIZE 	14
+#define MILENAGE_KASME_SIZE 	32
 
 /*
  *	GSM (COMP128-4) outputs
@@ -71,6 +75,13 @@ int milenage_mip_generate(uint8_t mip_key[EVP_MAX_MD_SIZE],
 			   const size_t mn_nai_len,
 			   const fr_milenage_mip_ip_type_t ip_type,
 			   const fr_ipaddr_t *ha_ipaddr) CC_HINT(nonnull);
+
+int milenage_kasme_generate(uint8_t kasme[MILENAGE_KASME_SIZE],
+			     const uint8_t ck[MILENAGE_CK_SIZE],
+			     const uint8_t ik[MILENAGE_IK_SIZE],
+			     const uint8_t ak[MILENAGE_AK_SIZE],
+			     const uint64_t plmn_id,
+			     const uint64_t sqn);
 
 int	milenage_opc_generate(uint8_t opc[MILENAGE_OPC_SIZE],
 			      uint8_t const op[MILENAGE_OP_SIZE],

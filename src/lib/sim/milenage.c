@@ -617,6 +617,84 @@ int milenage_mip_generate(uint8_t mip_key[EVP_MAX_MD_SIZE],
 	return 0;
 }
 
+/** Generate KASME from UMTS
+ *
+ * The results of milenage and other information i.e. AUTN, SQN, XRES, CK, IK, AK along
+ * with PLMN are used to compute the Kasme value
+ *
+ * Officially described in 33401-g30.doc section A.2. But an easier to read explanation
+ * can be found at https://medium.com/uw-ictd/lte-authentication-2d0810a061ec
+ *
+ * @param[out] kasme    Buffer for KASME result
+ * @param[in] ck        CK = 128-bit confidentiality key (f3), or NULL.
+ * @param[in] ik        IK = 128-bit integrity key (f4), or NULL.
+ * @param[in] ak        AK = 48-bit anonymity key (f5*), or NULL
+ * @param[in] plmn_id   Public land mobile network ID
+ * @param[in] sqn       48-bit sequence number.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int milenage_kasme_generate(uint8_t kasme[MILENAGE_KASME_SIZE],
+			     const uint8_t ck[MILENAGE_CK_SIZE],
+			     const uint8_t ik[MILENAGE_IK_SIZE],
+			     const uint8_t ak[MILENAGE_AK_SIZE],
+			     const uint64_t plmn_id,
+			     const uint64_t sqn)
+{
+	uint8_t ks[MILENAGE_KS_SIZE];
+	uint8_t kk[MILENAGE_KK_SIZE];
+	uint8_t i;
+	HMAC_CTX *hmac;
+
+	FR_PROTO_HEX_DUMP(ck, MILENAGE_CK_SIZE, "KASME IN CK");
+	FR_PROTO_HEX_DUMP(ik, MILENAGE_IK_SIZE, "KASME IN IK");
+	FR_PROTO_HEX_DUMP(ak, MILENAGE_AK_SIZE, "KASME IN AK");
+	FR_PROTO_HEX_DUMP((const uint8_t *)&plmn_id, sizeof(plmn_id), "KASME IN PLMN_ID");
+	FR_PROTO_HEX_DUMP((const uint8_t *)&sqn, sizeof(sqn), "KASME IN SQN");
+
+	/* k = CK || IK */
+	memcpy(kk, ck, MILENAGE_CK_SIZE);
+	memcpy(kk + MILENAGE_CK_SIZE, ik, MILENAGE_IK_SIZE);
+
+	FR_PROTO_HEX_DUMP(kk, MILENAGE_KK_SIZE, "KASME KK");
+
+	/* Initialize a 14 byte buffer s */
+	unsigned int kasme_len = MILENAGE_KASME_SIZE;
+
+	/* Assign the first byte of s as 0x10 */
+	ks[0] = 0x10;
+
+	/* Copy the 3 bytes of PLMN into s */
+	memcpy(ks + 1, &plmn_id, 3);
+
+	/* Assign 5th and 6th byte as 0x00 and 0x03 */
+	ks[4] = 0x00;
+	ks[5] = 0x03;
+
+	/* Assign the next 6 bytes as SQN XOR AK */
+	const uint8_t *sqn_byte = (const uint8_t *)&sqn;
+	for (i = 0; i < 6; i++) {
+		ks[i+6] = sqn_byte[i] ^ ak[i];
+	}
+
+	/* Assign the last two bytes as 0x00 and 0x06 */
+	ks[12] = 0x00;
+	ks[13] = 0x06;
+
+	/* Perform an HMAC-SHA256 using Key k from step 1 and s as the message. */
+	hmac = HMAC_CTX_new();
+	HMAC_Init_ex(hmac, kk, MILENAGE_KK_SIZE, EVP_sha256(), NULL);
+
+	HMAC_Update(hmac, ks, MILENAGE_KS_SIZE);
+	HMAC_Final(hmac, &kasme[0], &kasme_len);
+	HMAC_CTX_free(hmac);
+
+	FR_PROTO_HEX_DUMP(kasme, MILENAGE_KASME_SIZE, "KASME OUTPUT");
+
+	return 0;
+}
+
 #ifdef TESTING_MILENAGE
 /*
  *  cc milenage.c -g3 -Wall -DHAVE_DLFCN_H -DTESTING_MILENAGE -DWITH_TLS -I../../../../ -I../../../ -I ../base/ -I /usr/local/opt/openssl/include/ -include ../include/build.h -L /usr/local/opt/openssl/lib/ -l ssl -l crypto -l talloc -L ../../../../../build/lib/local/.libs/ -lfreeradius-server -lfreeradius-tls -lfreeradius-util -o test_milenage && ./test_milenage
