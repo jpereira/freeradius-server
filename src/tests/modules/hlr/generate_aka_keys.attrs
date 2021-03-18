@@ -1,0 +1,14 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "bob"
+User-Password = "hello"
+Called-Station-Id = 0x010203040506
+Session-Timeout = 4096
+Vendor-Specific.WiMAX.Visited-PLMN-ID = 0x01
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
