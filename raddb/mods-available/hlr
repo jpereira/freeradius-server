@@ -1,0 +1,87 @@
+#  -*- text -*-
+#
+#
+#  $Id$
+
+#######################################################################
+#
+#  = HLR (Home location register)
+#
+hlr wimax {
+  #
+  # EPS-AKA: Extensible Authentication Protocol (EAP) is an authentication
+  # framework in Long Term Evolution (LTE) networks.
+  #
+  eps-aka {
+    in {
+      # Either OP or OPc (there's a conversion function to
+      # generate OPC from OP and KI).
+      opc = %{control.SIM-OPc}
+      amf = %{control.SIM-AMF}
+      ki = %{control.SIM-Ki}
+      sqn = %{control.SIM-SQN}
+      plmn_id = %{request.Vendor-Specific.WiMAX.Visited-PLMN-ID}
+      rand = %{control.WiMAX-SIM-RAND}
+    }
+    out {
+      rand  = &reply.Vendor-Specific.WiMAX.Authentication-Info.E-UTRAN-Vector.RAND
+ #     autn  = &reply.Vendor-Specific.WiMAX.Authentication-Info.E-UTRAN-Vector.AUTN
+#      kasme = &reply.Vendor-Specific.WiMAX.Authentication-Info.E-UTRAN-Vector.KASME
+#      xres  = &reply.Vendor-Specific.WiMAX.Authentication-Info.E-UTRAN-Vector.RAND
+
+      autn = &reply.MyStruct[*].Options.MyStruct.Field2
+      kasme = &reply.MyStruct[*].Options.MyStruct.Field3
+      xres = &reply.MyStruct[*].Options.MyStruct.Field1
+    }
+
+    #
+    #  Clean up
+    #
+    delete {
+      attr = &Vendor-Specific.Microsoft.MPPE-Send-Key
+      attr = &Vendor-Specific.Microsoft.MPPE-Recv-Key
+    }
+  }
+
+  #
+  # MIP:: Used for WiMAX
+  #
+  milenage-mip {
+    in {
+      # Either OP or OPc (there's a conversion function to
+      # generate OPC from OP and KI).
+      #      op = <tmpl>
+      opc = 0xFB2A3D1B360F599ABAB99DB8669F8308
+      amf = 0x00000000000000000000000000000001
+      ki = 0xEB215756028D60E3275E613320AEC880
+      sqn = 2
+#     plmn = <tmpl>
+      rand = %{control:WiMAX-SIM-RAND}
+    }
+    out {
+      autn = &Vendor-Specific.WiMAX.Authentication-Info.E-UTRAN-Vector.AUTN
+      rand = &Vendor-Specific.WiMAX.Authentication-Info.E-UTRAN-Vector.RAND
+      msk = &request.Vendor-Specific.WiMAX.MSK
+      kasme = &Vendor-Specific.WiMAX.Authentication-Info.E-UTRAN-Vector.KASME  
+      plmn_id = &request.Vendor-Specific.WiMAX.Visited-PLMN-ID
+    }
+
+    fixup {
+      calling_station_id = yes
+    }
+
+    #
+    #  Clean up
+    #
+    delete {
+      attr = &Vendor-Specific.Microsoft.MPPE-Send-Key
+      attr = &Vendor-Specific.Microsoft.MPPE-Recv-Key
+    }
+  }
+
+  #
+  # Multiple entries
+  #
+  op_selection = eps-aka
+  op_selection = milenage-mip
+}

@@ -141,7 +141,7 @@ unlang_action_t hlr_eps_aka_handle(rlm_rcode_t *p_result, module_ctx_t const *mc
 		 *	Feed AMF, Ki, SQN and RAND into the Milenage algorithm (f1, f2, f3, f4, f5)
 		 *	which returns AUTN, AK, CK, IK, XRES.
 		 */
-		fr_pair_t *xres = NULL, *autn = NULL, *kasme = NULL;
+		fr_pair_t *xres = NULL;//, *autn = NULL, *kasme = NULL;
 		uint8_t *opc = NULL, opc_buf[MILENAGE_OPC_SIZE*2];
 		uint8_t *amf = NULL, amf_buf[MILENAGE_AMF_SIZE*2];
 		uint8_t *ki = NULL, ki_buf[MILENAGE_KI_SIZE*2];
@@ -198,19 +198,22 @@ unlang_action_t hlr_eps_aka_handle(rlm_rcode_t *p_result, module_ctx_t const *mc
 			RWDEBUG2("Couldn't find %s attribute, doing nothing...", config->out.xres->name);
 			RETURN_MODULE_NOOP;
 		}
-		fr_pair_value_memdup(xres, xres_bin, MILENAGE_XRES_SIZE, false);
+		xres->vp_uint32 = 111;
+		// fr_pair_value_memdup(xres, xres_bin, MILENAGE_XRES_SIZE, false);
 
-		if (tmpl_find_or_add_vp(&autn, request, config->out.autn) < 0) {
-			RWDEBUG2("Couldn't find %s attribute, doing nothing...", config->out.autn->name);
-			RETURN_MODULE_NOOP;
-		}
-		fr_pair_value_memdup(autn, autn_bin, MILENAGE_AUTN_SIZE, false);
+		// if (tmpl_find_or_add_vp(&autn, request, config->out.autn) < 0) {
+		// 	RWDEBUG2("Couldn't find %s attribute, doing nothing...", config->out.autn->name);
+		// 	RETURN_MODULE_NOOP;
+		// }
+		// // fr_pair_value_memdup(autn, autn_bin, MILENAGE_AUTN_SIZE, false);
+		// autn->vp_uint32 = 222;
 
-		if (tmpl_find_or_add_vp(&kasme, request, config->out.kasme) < 0) {
-			RWDEBUG2("Couldn't find %s attribute, doing nothing...", config->out.kasme->name);
-			RETURN_MODULE_NOOP;
-		}
-		fr_pair_value_memdup(kasme, kasme_bin, MILENAGE_KASME_SIZE, false);
+		// if (tmpl_find_or_add_vp(&kasme, request, config->out.kasme) < 0) {
+		// 	RWDEBUG2("Couldn't find %s attribute, doing nothing...", config->out.kasme->name);
+		// 	RETURN_MODULE_NOOP;
+		// }
+		// // fr_pair_value_memdup(kasme, kasme_bin, MILENAGE_KASME_SIZE, false);
+		// kasme->vp_uint32 = 333;
 
 		RETURN_MODULE_UPDATED;
 	}

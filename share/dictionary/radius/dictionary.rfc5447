@@ -17,3 +17,9 @@ ATTRIBUTE	MIP6-Feature-Vector			124	integer64
 #
 ATTRIBUTE	MIP6-Home-Link-Prefix			125	struct
 MEMBER		IPv6-Prefix				ipv6prefix
+
+ATTRIBUTE	MyStruct					254	struct
+MEMBER		Field1					uint32
+MEMBER		Field2					uint32
+MEMBER		Field3					uint32
+MEMBER		Options					group
