@@ -141,6 +141,10 @@ jobs:
       run: |
         pip3 install tacacs_plus
 
+    - name: Install tftpy (Needed by scripts/tftp/tftpy_client)
+      run: |
+        pip3 install tftpy
+
     - name: Install LLVM 10
       if: ${{ matrix.env.CC == 'clang' && runner.os != 'macOS' }}
       run: |
