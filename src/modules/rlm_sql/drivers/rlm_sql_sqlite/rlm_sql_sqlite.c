@@ -430,6 +430,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 			return -1;
 		};
 
+		printf("##################### driver->filename = %s\n", driver->filename);
 		status = sqlite3_open_v2(driver->filename, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
 		if (!db) {
 #    ifdef HAVE_SQLITE3_ERRSTR
