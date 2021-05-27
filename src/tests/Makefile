@@ -8,6 +8,7 @@
 #
 include ../../Make.inc
 
+PORT	 = 12340
 BUILD_PATH := $(top_builddir)/build
 
 #
@@ -81,7 +82,7 @@ RADDB_PATH := $(top_builddir)/raddb/
 TESTS	= mschapv1 digest-01/digest* \
 	test.example.com
 
-PORT	 = 12340
+
 ACCTPORT = $(shell expr $(PORT) + 1)
 
 #	example.com stripped.example.com

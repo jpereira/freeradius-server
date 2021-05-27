@@ -223,6 +223,9 @@ define ADD_TARGET_RULE.a
     ifneq "${ANALYZE.c}" ""
         scan.${1}: $${${1}_PLISTS}
     endif
+
+    .PHONY: $(DIR)
+    $(DIR)/: ${1}
 endef
 
 # ADD_TARGET_RULE.so - Build a ".so" target.
@@ -320,6 +323,7 @@ define INCLUDE_SUBMAKEFILE
     TGT_INSTALLDIR := ..
     TGT_CHECK_HEADERS :=
     TGT_CHECK_LIBS :=
+    TEST :=
 
     SOURCES :=
     SRC_CFLAGS :=
@@ -327,6 +331,8 @@ define INCLUDE_SUBMAKEFILE
     SRC_DEFS :=
     SRC_INCDIRS :=
     MAN :=
+    FILES :=
+    OUTPUT :=
 
     SUBMAKEFILES :=
 

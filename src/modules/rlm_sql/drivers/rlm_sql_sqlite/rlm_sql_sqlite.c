@@ -241,7 +241,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 
 	int status;
 	sqlite3_stmt *statement;
-	char const *z_tail;
+	char const *z_tail = NULL;
 
 	INFO("rlm_sql_sqlite: Executing SQL statements from file \"%s\"", filename);
 
