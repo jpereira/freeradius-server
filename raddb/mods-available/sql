@@ -327,4 +327,9 @@ sql {
 	#  please create them and contribute them back to the project.
 	#
 	$INCLUDE ${modconfdir}/${.:name}/main/${dialect}/queries.conf
+
+	#
+	#	.Crontab maintenance queries.
+	#
+	$INCLUDE ${modconfdir}/${.:name}/main/${dialect}/cron.conf
 }
